@@ -1,2 +1,2 @@
-
-            # print("noisy data type:", train_noisy.dtype)
+    process_and_serialize('test')
+    data_verify('test')

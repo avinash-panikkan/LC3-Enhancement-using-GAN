@@ -8,10 +8,12 @@ import zaf
 import numpy
 import scipy
 
-clean_train_folder = 'data/clean_trainset_wav'
-noisy_train_folder = 'data/noisy_trainset_wav'
-clean_test_folder = 'data/clean_testset_wav/clean_testset_wav'
-noisy_test_folder = 'data/noisy_testset_wav/noisy_testset_wav'
+from mdctn import mdct, imdct
+
+clean_train_folder = 'D:\Main Project\Dataset\clean_trainset_28spk_wav'
+noisy_train_folder = 'D:\Main Project\Dataset\\noisy_train'
+clean_test_folder = 'D:\Main Project\Project\clean_testset_wav'
+noisy_test_folder = 'D:\Main Project\Project\output1'
 serialized_train_folder = 'data/serialized_train_data'
 serialized_test_folder = 'data/serialized_test_data'
 window_size = 2 ** 14  # about 1 second of samples
@@ -116,95 +118,97 @@ def data_verify(data_type):
 
 
 
-def cmdct(x, odd=True):
-    """ Calculate complex MDCT/MCLT of input signal
+# def cmdct(x, odd=True):
+#     """ Calculate complex MDCT/MCLT of input signal
 
-    Parameters
-    ----------
-    x : array_like
-        The input signal
-    odd : boolean, optional
-        Switch to oddly stacked transform. Defaults to :code:True.
+#     Parameters
+#     ----------
+#     x : array_like
+#         The input signal
+#     odd : boolean, optional
+#         Switch to oddly stacked transform. Defaults to :code:True.
 
-    Returns
-    -------
-    out : array_like
-        The output signal
+#     Returns
+#     -------
+#     out : array_like
+#         The output signal
 
-    """
-    N = len(x) // 2
-    n0 = (N + 1) / 2
-    if odd:
-        outlen = N
-        pre_twiddle = numpy.exp(-1j * numpy.pi * numpy.arange(N * 2) / (N * 2))
-        offset = 0.5
-    else:
-        outlen = N + 1
-        pre_twiddle = 1.0
-        offset = 0.0
+#     """
+#     N = len(x) // 2
+#     n0 = (N + 1) / 2
+#     if odd:
+#         outlen = N
+#         pre_twiddle = numpy.exp(-1j * numpy.pi * numpy.arange(N * 2) / (N * 2))
+#         offset = 0.5
+#     else:
+#         outlen = N + 1
+#         pre_twiddle = 1.0
+#         offset = 0.0
 
-    post_twiddle = numpy.exp(
-        -1j * numpy.pi * n0 * (numpy.arange(outlen) + offset) / N
-    )
+#     post_twiddle = numpy.exp(
+#         -1j * numpy.pi * n0 * (numpy.arange(outlen) + offset) / N
+#     )
 
-    X = scipy.fftpack.fft(x * pre_twiddle)[:outlen]
+#     X = scipy.fftpack.fft(x * pre_twiddle)[:outlen]
 
-    if not odd:
-        X[0] *= numpy.sqrt(0.5)
-        X[-1] *= numpy.sqrt(0.5)
+#     if not odd:
+#         X[0] *= numpy.sqrt(0.5)
+#         X[-1] *= numpy.sqrt(0.5)
 
-    return X * post_twiddle * numpy.sqrt(1 / N)
-
-
-
-def mdct(x, odd=True):
-    """ Calculate modified discrete cosine transform of input signal
-
-    Parameters
-    ----------
-    X : array_like
-        The input signal
-    odd : boolean, optional
-        Switch to oddly stacked transform. Defaults to :code:True.
-
-    Returns
-    -------
-    out : array_like
-        The output signal
-
-    """
-    return numpy.real(cmdct(x, odd=odd)) * numpy.sqrt(2)
+#     return X * post_twiddle * numpy.sqrt(1 / N)
 
 
+
+# def mdct(x, odd=True):
+#     """ Calculate modified discrete cosine transform of input signal
+
+#     Parameters
+#     ----------
+#     X : array_like
+#         The input signal
+#     odd : boolean, optional
+#         Switch to oddly stacked transform. Defaults to :code:True.
+
+#     Returns
+#     -------
+#     out : array_like
+#         The output signal
+
+#     """
+#     return numpy.real(cmdct(x, odd=odd)) * numpy.sqrt(2)
 
 
 
 
 
-def mdctconvert(train_clean1,batch):
-                output1 = train_clean1.cpu().detach().numpy()
-                shape = output1.shape
-                # print(shape[0])
-                batch = shape[0]
+
+
+# def mdctconvert(train_clean1,batch):
+#                 print(train_clean1)
+#                 output1 = train_clean1.cpu().detach().numpy()
+#                 shape = output1.shape
+#                 print(shape)
+#                 # print(shape[0])
+#                 batch = shape[0]
                 
-                mdct_results = []
-                for i in range(batch):
-                    clean_mdct = mdct(output1[i][0])
-                    # tr1 = tr1.append
-                    # print(output1[i][0].shape)
-                    mdct_results.append(clean_mdct)
-                    # print(clean_mdct.shape)
-                    # print(mdct_results.shape)
-                mdct_array = np.array(mdct_results)
-                reshaped_array = mdct_array.reshape(batch, 1, 8192)
-                outtt = torch.from_numpy(reshaped_array)
-                # print(mdct_array.shape)
-                # print(reshaped_array.shape)
-                # print(output1.shape)
-                # print("train clean",type(train_clean1),outtt.shape)
-                # print("out",type(outtt),outtt.shape)
-                outtt=outtt.to(torch.float32)
-                return outtt
+#                 mdct_results = []
+#                 for i in range(batch):
+#                     clean_mdct = mdct(output1[i][0])
+#                     # tr1 = tr1.append
+#                     # print(output1[i][0].shape)
+#                     mdct_results.append(clean_mdct)
+#                     # print(clean_mdct.shape)
+#                     # print(mdct_results.shape)
+#                 mdct_array = np.array(mdct_results)
+#                 # reshaped_array = mdct_array.reshape(batch, 1, 8192) #---------------------------commented here
+#                 outtt = torch.from_numpy(mdct_array)
+#                 # print(mdct_array.shape)
+#                 # print(reshaped_array.shape)
+#                 # print(output1.shape)
+#                 # print("train clean",type(train_clean1),outtt.shape)
+#                 # print("out",type(outtt),outtt.shape)
+#                 outtt=outtt.to(torch.float32)
+#                 return outtt
 
 
 

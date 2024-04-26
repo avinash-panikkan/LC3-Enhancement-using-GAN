@@ -15,8 +15,13 @@ import numpy as np
 from data_preprocess import sample_rate
 from model import Generator, Discriminator
 from utils import AudioDataset, emphasis
+import matplotlib.pyplot as plt
 
 
+
+d_clean_loss_list = []
+d_noisy_loss_list = []
+g_loss_list = []
 
 
 
@@ -94,8 +99,8 @@ if __name__ == '__main__':
     print("# generator parameters:", sum(param.numel() for param in generator.parameters()))
     print("# discriminator parameters:", sum(param.numel() for param in discriminator.parameters()))
     # optimizers
-    g_optimizer = optim.RMSprop(generator.parameters(), lr=0.0001)
-    d_optimizer = optim.RMSprop(discriminator.parameters(), lr=0.0001)
+    g_optimizer = optim.Adam(generator.parameters(), lr=0.001)
+    d_optimizer = optim.Adam(discriminator.parameters(), lr=0.001)
 
     for epoch in range(NUM_EPOCHS):
         train_bar = tqdm(train_data_loader)
@@ -130,8 +135,8 @@ if __name__ == '__main__':
             # generated out*noisy ---------------- to be done
             # gen_mdct = data_preprocess.mdct(generated_outputs)
             maskapplied = train_noisy*generated_outputs
-            print("abcd    ",maskapplied.shape)
-            print("abcd    ",train_noisy_mdct.shape)
+            # print("abcd    ",maskapplied.shape)
+            # print("abcd    ",train_noisy_mdct.shape)
             outputs = discriminator(torch.cat((maskapplied, train_noisy), dim=1), ref_batch)
             noisy_loss = torch.mean(outputs ** 2)  # L2 loss - we want them all to be 0
             noisy_loss.backward()
@@ -163,20 +168,24 @@ if __name__ == '__main__':
 
             # Now mdct_rmse is already a float value representing the loss
             # No need to convert it back to a torch tensor
-            g_loss = torch.tensor(mdct_rmse, dtype=torch.float64, requires_grad=True)
-            g_loss_ = torch.tensor(1.0, dtype=torch.float64, requires_grad=True)
+            # g_loss = torch.tensor(mdct_rmse, dtype=torch.float64, requires_grad=True)
+            # g_loss_ = torch.tensor(1.0, dtype=torch.float64, requires_grad=True)
 
             
             # mdct_rmse = stft_rmse_loss(generated_outputs,train_clean)
-            # l1_dist = torch.abs(torch.add(generated_outputs, torch.neg(train_clean)))
-            # g_cond_loss = 100 * torch.mean(l1_dist)  # conditional loss
-            # g_loss = g_loss_ + g_cond_loss
+            l1_dist = torch.abs(torch.add(maskapplied, torch.neg(train_clean)))
+            g_cond_loss = 100 * torch.mean(l1_dist)  # conditional loss
+            g_loss = g_loss_ + g_cond_loss
             # mdct_rmse = torch.from_numpy(np.array(mdct_rmse)).to(torch.float64)
             
             # g_loss = mdct_rmse
             # g_loss_ = torch.tensor(1.0, requires_grad=False)
 
             # backprop + optimize
+            
+
+
+
             g_loss.backward()
             g_optimizer.step()
 
@@ -184,9 +193,21 @@ if __name__ == '__main__':
                 'Epoch {}: d_clean_loss {:.4f}, d_noisy_loss {:.4f}, g_loss {:.4f}, g_conditional_loss '
                     .format(epoch + 1, clean_loss, noisy_loss, g_loss))
             
+            # d_clean_loss_list.append(clean_loss.cpu().detach().numpy())
+            # d_noisy_loss_list.append(noisy_loss.cpu().detach().numpy())
+            # g_loss_list.append(g_loss.cpu().detach().numpy())
+
             
             
             
+        g_path_prev = os.path.join('epochs', 'generator-{}.pkl'.format(epoch - 1))
+        d_path_prev = os.path.join('epochs', 'discriminator-{}.pkl'.format(epoch - 1))
+        if os.path.exists(g_path_prev):
+            os.remove(g_path_prev)
+            os.remove(d_path_prev)
+
+            print(f"Removed {g_path_prev} and {d_path_prev}")
+
         g_path = os.path.join('epochs', 'generator-{}.pkl'.format(epoch + 1))
         d_path = os.path.join('epochs', 'discriminator-{}.pkl'.format(epoch + 1))
         torch.save(generator.state_dict(), g_path)
@@ -199,14 +220,19 @@ if __name__ == '__main__':
             if torch.cuda.is_available():
                 test_noisy, z = test_noisy.cuda(), z.cuda()
             test_noisy, z = Variable(test_noisy), Variable(z)
-            test_noisy1 = data_preprocess.mdctconvert(test_noisy,50)
-            test_noisy1 = test_noisy1.cuda()
+            test_noisy1 = data_preprocess.mdctconvert(test_noisy,32)
+            test_noisy1 = test_noisy1.cuda() #changed here from cuda to cpu
             test_noisy1 = Variable(test_noisy1)
             fake_speech = generator(test_noisy1).data.cpu().numpy()  # convert to numpy array
             fake_speech = emphasis(fake_speech, emph_coeff=0.95, pre=False)
 
             for idx in range(fake_speech.shape[0]):
                 generated_sample = fake_speech[idx]
+                result_path = os.path.join('results','{}_e{}.wav'.format(test_file_names[idx].replace('.npy', ''), epoch - 1))
+                if os.path.exists(result_path):
+                    os.remove(result_path)
+                    print(f"Removed {result_path}")
+
                 file_name = os.path.join('results',
                                          '{}_e{}.wav'.format(test_file_names[idx].replace('.npy', ''), epoch + 1))
                 wavfile.write(file_name, sample_rate, generated_sample.T)
