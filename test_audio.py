@@ -38,8 +38,8 @@ if __name__ == '__main__':
         if torch.cuda.is_available():
             noisy_slice, z = noisy_slice.cuda(), z.cuda()
         noisy_slice, z = Variable(noisy_slice), Variable(z)
-        noisy_slice1= data_preprocess.mdctconvert(noisy_slice,50).cuda()
-        generated_speech = generator(noisy_slice1).data.cpu().numpy()
+        noisy_slice1= data_preprocess.mdctconvert(noisy_slice,32).cuda()
+        generated_speech = generator(noisy_slice1, z).data.cpu().numpy()
         out = noisy_slice.data.cpu().numpy()* generated_speech
         generated_speech = emphasis(out, emph_coeff=0.95, pre=False)
         generated_speech = generated_speech.reshape(-1)
